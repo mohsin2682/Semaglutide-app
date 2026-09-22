@@ -19,6 +19,7 @@ from sema.analysis import (
 from sema.chem import (
     AA_NAMES, C13_SPACING, PROTON, SEMAGLUTIDE_LYS_POS, SEMAGLUTIDE_SEQ, Peptide, fmass, fstr,
     isotope_pattern, mz_of, parse_formula, semaglutide, SEMA_SIDECHAIN, fragment_table,
+    TIRZEPATIDE_SEQ, TIRZEPATIDE_LYS_POS, TIRZEPATIDE_SIDECHAIN, tirzepatide,
 )
 from sema.demo import generate_demo_run
 from sema.io import load_run
@@ -89,15 +90,39 @@ with st.sidebar:
         st.caption("Vendor .d / .wiff files: convert to mzML with MSConvert first (see README).")
 
     st.subheader("2 · Peptide")
-    seq = st.text_input("Sequence (B = Aib)", SEMAGLUTIDE_SEQ).strip().upper()
-    side = st.checkbox("Lys side chain: C18 diacid-γGlu-2×OEG", True)
-    k_pos = seq.find("K") + 1 if seq != SEMAGLUTIDE_SEQ else SEMAGLUTIDE_LYS_POS
-    extra_mod = st.text_input("Extra modification formula (optional)", "", help="Elemental formula added to the Lys, e.g. C2H2O")
+    PRESETS = {
+        "Semaglutide": dict(seq=SEMAGLUTIDE_SEQ, k=SEMAGLUTIDE_LYS_POS, chain=SEMA_SIDECHAIN,
+                           chain_name="C18 diacid-γGlu-2×OEG", cterm=False),
+        "Tirzepatide": dict(seq=TIRZEPATIDE_SEQ, k=TIRZEPATIDE_LYS_POS, chain=TIRZEPATIDE_SIDECHAIN,
+                           chain_name="C20 diacid-γGlu-2×AEEA", cterm=True),
+        "Custom / other": None,
+    }
+    preset = st.selectbox("Peptide preset", list(PRESETS), index=0)
+    cfg = PRESETS[preset]
+    if st.session_state.get("_last_preset") != preset:
+        st.session_state["seq_input"] = cfg["seq"] if cfg else SEMAGLUTIDE_SEQ
+        st.session_state["k_pos_input"] = cfg["k"] if cfg else 0
+        st.session_state["cterm_input"] = cfg["cterm"] if cfg else False
+        st.session_state["side_input"] = bool(cfg)
+        st.session_state["extra_mod_input"] = ""
+        st.session_state["_last_preset"] = preset
+
+    seq = st.text_input("Sequence (B = Aib)", key="seq_input").strip().upper()
+    if cfg:
+        side = st.checkbox(f"Include lipidated side chain: {cfg['chain_name']}", key="side_input")
+    else:
+        side = False
+    k_pos = st.number_input("Modified-residue position (1-based; 0 = none)", 0, 300, step=1, key="k_pos_input",
+                            help="Position of the residue (usually Lys) carrying the side chain / extra modification. "
+                                 "Auto-filled for the presets above; set manually for a custom sequence.")
+    cterm_amide = st.checkbox("C-terminal amide (unchecked = free-acid C-terminus)", key="cterm_input")
+    extra_mod = st.text_input("Extra modification formula (optional)", key="extra_mod_input",
+                              help="Elemental formula added at the modified-residue position, e.g. C2H2O")
     try:
         mods = {}
-        if side and k_pos > 0:
-            mods[k_pos] = ("side chain", parse_formula(SEMA_SIDECHAIN))
-        pep = Peptide(seq, mods, "peptide")
+        if side and cfg and k_pos > 0:
+            mods[k_pos] = ("side chain", parse_formula(cfg["chain"]))
+        pep = Peptide(seq, mods, "peptide", cterm_amide=cterm_amide)
         if extra_mod.strip() and k_pos > 0:
             from sema.chem import fadd
             base = mods.get(k_pos, ("", parse_formula("")))[1]

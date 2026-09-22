@@ -8,7 +8,7 @@ import pandas as pd
 from scipy.signal import find_peaks
 
 from .chem import (
-    C13_SPACING, PROTON, RESIDUES, AA_NAMES, Peptide, fadd, fmass, fstr,
+    C13_SPACING, PROTON, RESIDUES, AA_NAMES, GGLU, OEG, Peptide, fadd, fmass, fstr,
     fragment_table, isotope_pattern, mz_of, parse_formula,
 )
 
@@ -186,10 +186,21 @@ def build_library(pep: Peptide) -> pd.DataFrame:
     add("Extra OEG (+1x)", "Side chain", "C6H11NO3")
     add("Loss of gGlu", "Side chain", "C-5H-7N-1O-3")
     add("Extra gGlu", "Side chain", "C5H7NO3")
-    add("C16 diacid (-C2H4)", "Side chain", "C-2H-4", "Shorter fatty diacid")
-    add("C20 diacid (+C2H4)", "Side chain", "C2H4", "Longer fatty diacid")
-    add("Loss of C18 diacid", "Side chain", "C-18H-32O-3")
-    add("Loss of complete side chain (free Lys)", "Side chain", "C-35H-61N-3O-12")
+    add("Diacid -2C (-C2H4)", "Side chain", "C-2H-4", "Shorter fatty diacid by one CH2-CH2 unit")
+    add("Diacid +2C (+C2H4)", "Side chain", "C2H4", "Longer fatty diacid by one CH2-CH2 unit")
+    # derive "loss of the diacid" / "loss of the whole side chain" from the peptide's own
+    # attached modification, rather than assuming semaglutide's C18 diacid (works for any
+    # Lys-linked fatty-diacid peptide, e.g. tirzepatide's C20 diacid, as long as it uses the
+    # same gGlu + n*OEG linker chemistry)
+    if pep.mods:
+        pos0, (mod_name, chain_f) = next(iter(pep.mods.items()))
+        add(f"Loss of complete side chain ({mod_name}, free Lys)", "Side chain",
+            Counter({e: -n for e, n in chain_f.items()}))
+        diacid_f = fadd(fadd(chain_f, parse_formula(GGLU), -1), parse_formula(OEG), -2)
+        if diacid_f and all(n > 0 for n in diacid_f.values()):
+            n_c = diacid_f.get("C", 0)
+            add(f"Loss of C{n_c} diacid", "Side chain", Counter({e: -n for e, n in diacid_f.items()}),
+                "Assumes the standard gGlu + 2xOEG linker; loses only the fatty-diacid portion")
     # sequence variants: single deletions / insertions / substitutions
     res_f = {i: pep.residue_formula(i) for i in range(pep.n)}
     groups: dict = {}

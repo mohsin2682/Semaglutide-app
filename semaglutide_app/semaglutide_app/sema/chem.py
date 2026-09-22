@@ -124,11 +124,15 @@ def mz_of(mass: float, z: int, k: int = 0) -> float:
 
 
 # --------------------------------------------------------------------------- peptide
+CTERM_AMIDE_DELTA = "O-1N1H1"  # -OH -> -NH2 (C-terminal carboxamide instead of free acid), -0.9840 Da
+
+
 @dataclass
 class Peptide:
     seq: str
     mods: dict = field(default_factory=dict)  # pos(1-based) -> (name, Counter)
     name: str = "peptide"
+    cterm_amide: bool = False  # True for C-terminal carboxamide (e.g. tirzepatide Ser39-NH2)
 
     def __post_init__(self):
         bad = [c for c in self.seq if c not in RESIDUES]
@@ -149,7 +153,10 @@ class Peptide:
         f: Counter = Counter()
         for i in range(self.n):
             f = fadd(f, self.residue_formula(i))
-        return fadd(f, H2O)
+        f = fadd(f, H2O)
+        if self.cterm_amide:
+            f = fadd(f, parse_formula(CTERM_AMIDE_DELTA))
+        return f
 
     def mass(self) -> float:
         return fmass(self.formula())
@@ -167,6 +174,21 @@ def semaglutide(with_sidechain: bool = True, extra_mod: str | None = None) -> Pe
     if with_sidechain:
         mods[SEMAGLUTIDE_LYS_POS] = ("C18 diacid-gGlu-2xOEG", parse_formula(SEMA_SIDECHAIN))
     return Peptide(SEMAGLUTIDE_SEQ, mods, "semaglutide")
+
+
+# Tirzepatide (source: FDA GSRS / precision.fda.gov substance record, UNII OYN3CCI6QE).
+# 39-mer; B = Aib at positions 2 and 13; Lys20 carries eicosanedioyl(C20 diacid)-gGlu-2xAEEA(OEG);
+# C-terminus is Ser39 carboxamide (not free acid).
+TIRZEPATIDE_SEQ = "YBEGTFTSDYSIBLDKIAQKAFVQWLIAGGPSSGAPPPS"
+TIRZEPATIDE_LYS_POS = 20
+TIRZEPATIDE_SIDECHAIN = "C37H65N3O12"  # semaglutide's C35H61N3O12 side chain + C2H4 (C20 vs C18 diacid)
+
+
+def tirzepatide(with_sidechain: bool = True) -> Peptide:
+    mods = {}
+    if with_sidechain:
+        mods[TIRZEPATIDE_LYS_POS] = ("C20 diacid-gGlu-2xAEEA", parse_formula(TIRZEPATIDE_SIDECHAIN))
+    return Peptide(TIRZEPATIDE_SEQ, mods, "tirzepatide", cterm_amide=True)
 
 
 # --------------------------------------------------------------------------- fragments
