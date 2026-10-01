@@ -1,4 +1,4 @@
-"""Synthetic peptide QTOF dashboard: MS1 identification, MS/MS sequence confirmation, impurity profiling.
+"""Peptide drugs QTOF dashboard: MS1 identification, MS/MS sequence confirmation, impurity profiling.
 
 Run:  streamlit run app.py
 """
