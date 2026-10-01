@@ -1,7 +1,7 @@
-# Semaglutide QTOF Analyzer
+# Peptide QTOF Analyzer
 
 Streamlit dashboard for **identification (MS1)**, **sequence confirmation (MS/MS)** and **impurity profiling**
-of semaglutide from QTOF data.
+of peptide drugs from QTOF data.
 
 ```
 pip install -r requirements.txt
