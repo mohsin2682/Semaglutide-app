@@ -24,7 +24,7 @@ from sema.chem import (
 from sema.demo import generate_demo_run
 from sema.io import load_run
 
-st.set_page_config(page_title="Semaglutide QTOF Analyzer", page_icon="🧬", layout="wide")
+st.set_page_config(page_title="Peptide Drugs QTOF Analyzer", page_icon="🧬", layout="wide")
 
 BLUE, ORANGE, GREY, RED, GREEN = "#2a6fbb", "#d9822b", "#8a8f98", "#c0392b", "#2e8b57"
 
