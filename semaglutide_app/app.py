@@ -163,7 +163,7 @@ if source == "Upload files" and up_ms2 is not None:
     except Exception as e:  # noqa
         st.error(f"Could not read MS/MS file: {e}")
 
-st.title("Semaglutide identification, sequence confirmation & impurity analysis")
+st.title("Peptide identification, sequence confirmation & impurity analysis")
 if scans is None:
     st.info("Upload an LC-MS file in the sidebar, or switch to **Demo data** to explore the app.")
     st.stop()
