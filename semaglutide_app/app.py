@@ -1,4 +1,4 @@
-"""Semaglutide QTOF dashboard: MS1 identification, MS/MS sequence confirmation, impurity profiling.
+"""QTOF dashboard: MS1 identification, MS/MS sequence confirmation, impurity profiling.
 
 Run:  streamlit run app.py
 """
@@ -24,7 +24,7 @@ from sema.chem import (
 from sema.demo import generate_demo_run
 from sema.io import load_run
 
-st.set_page_config(page_title="Semaglutide QTOF Analyzer", page_icon="🧬", layout="wide")
+st.set_page_config(page_title="Peptide drug QTOF Analyzer", page_icon="🧬", layout="wide")
 
 BLUE, ORANGE, GREY, RED, GREEN = "#2a6fbb", "#d9822b", "#8a8f98", "#c0392b", "#2e8b57"
 
@@ -77,7 +77,7 @@ def cached_demo():
 
 # ============================================================================ sidebar
 with st.sidebar:
-    st.title("🧬 Semaglutide QTOF")
+    st.title("🧬 Peptide drug QTOF")
     st.caption("MS1 identification · MS/MS sequence confirmation · impurity profiling")
 
     st.subheader("1 · Data")
