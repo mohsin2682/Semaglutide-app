@@ -1,4 +1,4 @@
-"""QTOF dashboard: MS1 identification, MS/MS sequence confirmation, impurity profiling.
+"""Semaglutide QTOF dashboard: MS1 identification, MS/MS sequence confirmation, impurity profiling.
 
 Run:  streamlit run app.py
 """
@@ -24,7 +24,7 @@ from sema.chem import (
 from sema.demo import generate_demo_run
 from sema.io import load_run
 
-st.set_page_config(page_title="Peptide drug QTOF Analyzer", page_icon="🧬", layout="wide")
+st.set_page_config(page_title="Semaglutide QTOF Analyzer", page_icon="🧬", layout="wide")
 
 BLUE, ORANGE, GREY, RED, GREEN = "#2a6fbb", "#d9822b", "#8a8f98", "#c0392b", "#2e8b57"
 
@@ -77,7 +77,7 @@ def cached_demo():
 
 # ============================================================================ sidebar
 with st.sidebar:
-    st.title("🧬 Peptide drug QTOF")
+    st.title("🧬 Semaglutide QTOF")
     st.caption("MS1 identification · MS/MS sequence confirmation · impurity profiling")
 
     st.subheader("1 · Data")
@@ -131,6 +131,8 @@ with st.sidebar:
         st.error(str(e))
         st.stop()
 
+    pep_name = preset if preset != "Custom / other" else "peptide"
+
     st.subheader("3 · Parameters")
     ppm1 = st.number_input("MS1 tolerance (ppm)", 1.0, 50.0, 10.0, 1.0)
     ppm2 = st.number_input("MS/MS tolerance (ppm)", 1.0, 100.0, 20.0, 1.0)
@@ -163,10 +165,15 @@ if source == "Upload files" and up_ms2 is not None:
     except Exception as e:  # noqa
         st.error(f"Could not read MS/MS file: {e}")
 
-st.title("Peptide identification, sequence confirmation & impurity analysis")
+st.title(f"{pep_name.capitalize()} identification, sequence confirmation & impurity analysis")
 if scans is None:
     st.info("Upload an LC-MS file in the sidebar, or switch to **Demo data** to explore the app.")
     st.stop()
+
+if source == "Demo data (synthetic)" and preset != "Semaglutide":
+    st.warning(f"The built-in demo data is a **semaglutide** run, so it will not match {pep_name}. "
+               "Switch the sidebar Source to **Upload files** and load the matching mzML "
+               "(e.g. tirzepatide_demo.mzML for Tirzepatide).")
 
 ms1 = [s for s in scans if s.ms_level == 1]
 ms2 = [s for s in scans if s.ms_level >= 2] + [s for s in extra_ms2]
@@ -239,13 +246,13 @@ with tab_id:
         f"MS1 identity {'CONFIRMED' if ms1_ok else 'NOT confirmed'}: {n_ok} charge state(s) matched "
         f"(≥2 required), mean error {mean_ppm:+.2f} ppm, observed monoisotopic mass "
         f"{mass_obs:.4f} Da vs theoretical {M0:.4f} Da." if n_ok else
-        "No charge state matched the theoretical semaglutide isotope envelope.")
+        f"No charge state matched the theoretical {pep_name} isotope envelope.")
     a, b, c = st.columns(3)
     a.metric("Charge states matched", f"{n_ok} / {len(zs)}")
     b.metric("Mean mass error", "–" if not n_ok else f"{mean_ppm:+.2f} ppm")
     c.metric("Mean isotope score", "–" if not n_ok else f"{passed['Isotope score'].mean():.3f}")
 
-    fig = spectrum_fig(mz_s, it_s, "Summed MS1 spectrum (labelled = semaglutide charge states)")
+    fig = spectrum_fig(mz_s, it_s, f"Summed MS1 spectrum (labelled = {pep_name} charge states)")
     for _, r in passed.iterrows():
         fig.add_annotation(x=r["Observed m/z"], y=float(np.max(r["envelope"]["obs"])), text=f"{int(r['z'])}+",
                            showarrow=True, arrowhead=0, ay=-25, font=dict(color=BLUE, size=13), arrowcolor=BLUE)
@@ -293,9 +300,9 @@ with tab_seq:
             delta = neutral - M0
             lib = build_library(pep)
             near = lib.iloc[(lib["delta_mass"] - delta).abs().argsort()[:1]].iloc[0]
-            txt = (f"Precursor neutral mass **{neutral:.4f} Da** → Δ vs. semaglutide **{delta:+.4f} Da**. ")
+            txt = (f"Precursor neutral mass **{neutral:.4f} Da** → Δ vs. {pep_name} **{delta:+.4f} Da**. ")
             if abs(delta) < 0.02:
-                txt += "Precursor = intact semaglutide."
+                txt += f"Precursor = intact {pep_name}."
             elif abs(near["delta_mass"] - delta) < 0.02:
                 txt += f"Matches library entry **{near['name']}** ({near['delta_mass']:+.4f} Da)."
             else:
@@ -383,7 +390,7 @@ with tab_seq:
 # ============================================================================ impurities tab
 with tab_imp:
     if not n_ok:
-        st.warning("Main species not identified – impurity search needs a confirmed semaglutide envelope.")
+        st.warning(f"Main species not identified – impurity search needs a confirmed {pep_name} envelope.")
     elif imp_df.empty:
         st.info("No impurities above the reporting threshold matched.")
     else:
